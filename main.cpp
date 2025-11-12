@@ -1,17 +1,5 @@
 /*
 
-INPUTS
-- x1
-- x2
-- w1
-- w2
-- b j
-
-- v1
-- v2
-- b out
-
-
 FORWARD PASSES
 
 Hidden Layer
@@ -123,11 +111,14 @@ b j = b j - (learning rate * hidden eror term)
 #include <string>
 #include <vector>
 #include <cmath>
+#include <limits>
 
 using std::cin; // namespace aliases
 using std::cout;
 using std::endl;
+using std::numeric_limits;
 using std::string;
+using std::streamsize;
 
 // inputs
 int x1 = 0;
@@ -146,7 +137,7 @@ double v2 = 0.0;
 
 double b_out = 0.0;
 
-double learning_rate = 0.5;
+double learning_rate = 0.0;
 
 int epochs = 0;
 
@@ -168,18 +159,26 @@ int y = 0;
 double mse = 0.0;
 
 double output_error_term = 0.0;
+
 double v1_gradient = 0.0;
 double v2_gradient = 0.0;
+
 double b_out_gradient = 0.0;
 
 double h1_error_term = 0.0;
 double h2_error_term = 0.0;
+
 double w1_x1_gradient = 0.0;
 double w1_x2_gradient = 0.0;
 double w2_x1_gradient = 0.0;
 double w2_x2_gradient = 0.0;
+
 double b1_gradient = 0.0;
 double b2_gradient = 0.0;
+
+double epoch_mse = 0.0;
+
+bool is_user_retrying = true;
 
 double compute_activation(const double& x) {
     return 1 / (1 + exp(-(x)));
@@ -197,35 +196,34 @@ double compute_hj_wj_gradient(const double& hidden_error_term, const int& x_j) {
     return hidden_error_term * static_cast<double>(x_j);
 }
 
-void run_xor_neural_network() {
-    // pre-backpropagation
-
-    // hidden layer
+void forward_pass_hidden_layer () {
     h1 = (w1_x1 * static_cast<double>(x1)) + (w1_x2 * static_cast<double>(x2)) + b1;
     h2 = (w2_x1 * static_cast<double>(x1)) + (w2_x2 * static_cast<double>(x2)) + b2;
 
     a1 = compute_activation(h1);
     a2 = compute_activation(h2);
+}
 
-    // output layer
+void forward_pass_output_layer() {
     o = (v1 * static_cast<double>(a1)) + (v2 * static_cast<double>(a2)) + b_out;
 
     y_pred = compute_activation(o);
+}
 
-    // error
+void compute_error() {
     y = compute_xor(x1, x2);
 
     mse = 0.5 * pow(((static_cast<double>(y) - y_pred)), 2);
+}
 
-    // backpropagation
-
-    // output layer
+void compute_output_layer_gradient() {
     output_error_term = (y_pred - y) * (y_pred * (1 - y_pred));
     v1_gradient = output_error_term * a1;
     v2_gradient = output_error_term * a2;
     b_out_gradient = output_error_term;
+}
 
-    // hidden layer
+void compute_hidden_layer_gradient() {
     h1_error_term = compute_hj_error_term(output_error_term, v1, a1);
     h2_error_term = compute_hj_error_term(output_error_term, v2, a2);
 
@@ -236,16 +234,16 @@ void run_xor_neural_network() {
 
     b1_gradient = h1_error_term;
     b2_gradient = h2_error_term;
+}
 
-    // update weights and biases
-
-    // output layer
+void backpropagate_output_layer() {
     v1 = v1 - (learning_rate * v1_gradient);
     v2 = v2 - (learning_rate * v2_gradient);
 
     b_out = b_out - (learning_rate * b_out_gradient);
+}
 
-    // hidden layer
+void backpropagate_hidden_layer() {
     w1_x1 = w1_x1 - (learning_rate * w1_x1_gradient);
     w1_x2 = w1_x2 - (learning_rate * w1_x2_gradient);
     w2_x1 = w2_x1 - (learning_rate * w2_x1_gradient);
@@ -253,70 +251,169 @@ void run_xor_neural_network() {
 
     b1 = b1 - (learning_rate * b1_gradient);
     b2 = b2 - (learning_rate * b2_gradient);
+}
 
-    cout << "HIDDEN LAYER NEURONS" << endl;
-    cout << "WEIGHT 1 - Input 1: " << w1_x1 << " | Input 2: " << w1_x2 << endl;
-    cout << "WEIGHT 2 - Input 1: " << w2_x1 << " | Input 2: " << w2_x2 << endl;
-    cout << "BIAS 1: " << b1 << " | BIAS 2: " << b2 << endl;
-    cout << "HIDDEN NEURON 1 WEIGHTED SUM: " << h1 << " | HIDDEN NEURON 2 WEIGHTED SUM: " << h2 << endl;
-    cout << "HIDDEN NEURON 1 ACTIVATION: " << a1 << " | HIDDEN NEURON 2 ACTIVATION: " << a2 << endl;
+void run_xor_neural_network() {
+    forward_pass_hidden_layer();
+    forward_pass_output_layer();
+    compute_error();
+    compute_output_layer_gradient();
+    compute_hidden_layer_gradient();
+    backpropagate_output_layer();
+    backpropagate_hidden_layer();
+
+    epoch_mse += mse;
+}
+
+void show_results() {
+    cout << "=== INPUT LAYER ===" << endl;
+    cout << "INPUT 1: " << x1 << " | INPUT 2: " << x2 << endl;
     cout << endl;
 
-    cout << "OUTPUT LAYER NEURON" << endl;
-    cout << "WEIGHT 1: " << v1 << " | WEIGHT 2: " << v2 << endl;
-    cout << "BIAS: " << b_out << endl;
-    cout << "WEIGHTED SUM: " << o << " | ACTIVATION: " << y_pred << endl;
+    cout << "=== HIDDEN LAYER NEURONS ===" << endl;
+    cout << "Weight 1 - Input 1: " << w1_x1 << " | Input 2: " << w1_x2 << endl;
+    cout << "Weight 2 - Input 1: " << w2_x1 << " | Input 2: " << w2_x2 << endl;
+    cout << "Bias 1: " << b1 << " | Bias 2: " << b2 << endl;
+    cout << "HIDDEN NEURON 1 Weighted Sum: " << h1 << " | HIDDEN NEURON 2 Weighted Sum: " << h2 << endl;
+    cout << "HIDDEN NEURON 1 Activation: " << a1 << " | HIDDEN NEURON 2 Activation: " << a2 << endl;
     cout << endl;
 
-    cout << "BACKPROPAGATION" << endl;
+    cout << "=== OUTPUT LAYER NEURON ===" << endl;
+    cout << "Weight 1: " << v1 << " | Weight 2: " << v2 << endl;
+    cout << "Bias: " << b_out << endl;
+    cout << "Weighted Sum: " << o << " | Activation: " << y_pred << endl;
+    cout << endl;
+
+    cout << "=== BACKPROPAGATION ===" << endl;
     cout << endl;
     cout << "EXPECTED XOR: " << y << endl;
     cout << endl;
     cout << "OUTPUT LAYER NEURON" << endl;
-    cout << "OUTPUT ERROR TERM: " << output_error_term << endl;
-    cout << "WEIGHT 1 GRADIENT: " << v1_gradient << " | WEIGHT 2 GRADIENT: " << v2_gradient << endl;
-    cout << "BIAS GRADIENT: " << b_out_gradient << endl;
+    cout << "Output Error Term: " << output_error_term << endl;
+    cout << "Weight 1 Gradient: " << v1_gradient << " | Weight 2 Gradient: " << v2_gradient << endl;
+    cout << "Bias Gradient: " << b_out_gradient << endl;
     cout << endl;
     cout << "HIDDEN LAYER NEURON" << endl;
-    cout << "WEIGHT 1 - INPUT 1 GRADIENT: " << w1_x1_gradient << " | INPUT 2 GRADIENT: " << w1_x2_gradient << endl;
-    cout << "WEIGHT 2 - INPUT 1 GRADIENT: " << w2_x1_gradient << " | INPUT 2 GRADIENT: " << w2_x2_gradient << endl;
-    cout << "BIAS 1: " << b1_gradient << " | BIAS 2: " << b2_gradient << endl;
+    cout << "WEIGHT 1 - Input 1 Gradient: " << w1_x1_gradient << " | Input 2 Gradient: " << w1_x2_gradient << endl;
+    cout << "WEIGHT 2 - Input 1 Gradient: " << w2_x1_gradient << " | Input 2 Gradient: " << w2_x2_gradient << endl;
+    cout << "Bias 1: " << b1_gradient << " | Bias 2: " << b2_gradient << endl;
     cout << endl;
     cout << "MSE: " << mse << endl;
     cout << endl;
 }
 
+bool wants_to_retry() {
+    return is_user_retrying;
+}
+
+template <typename T>
+void validate_number_input(T& variable) {
+    while (!(cin >> variable)) {
+        cout << "Invalid input. Please re-enter a valid number:" << endl;
+        cin.clear(); // clear error flag
+        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // discard invalid input
+    }
+}
+
 int main() {
-    // note: hardcoded inputs
-    w1_x1 = 0.05;
-    w1_x2 = 0.01;
-    w2_x1 = -0.2;
-    w2_x2 = -0.05;
+    while (wants_to_retry()) {
+        cout << "Enter HIDDEN NEURON 1 WEIGHT for Input 1" << endl;
+        validate_number_input(w1_x1);
+        cout << "Enter HIDDEN NEURON 1 WEIGHT for Input 2" << endl;
+        validate_number_input(w1_x2);
+        cout << "Enter HIDDEN NEURON 2 WEIGHT for Input 1" << endl;
+        validate_number_input(w2_x1);
+        cout << "Enter HIDDEN NEURON 2 WEIGHT for Input 2" << endl;
+        validate_number_input(w2_x2);
+        cout << endl;
 
-    b1 = -0.1;
-    b2 = 0.2;
+        cout << "Enter BIAS for NEURON 1" << endl;
+        validate_number_input(b1);
+        cout << "Enter BIAS for NEURON 2" << endl;
+        validate_number_input(b2);
+        cout << endl;
 
-    v1 = -0.3;
-    v2 = -0.25;
+        cout << "Enter OUTPUT NEURON WEIGHT 1" << endl;
+        validate_number_input(v1);
+        cout << "Enter OUTPUT NEURON WEIGHT 2" << endl;
+        validate_number_input(v2);
+        cout << endl;
 
-    b_out = 0;
+        cout << "Enter BIAS for OUTPUT NEURON" << endl;
+        validate_number_input(b_out);
+        cout << endl;
 
-    for (int i = 0; i < 200; i++) {
-        cout << "EPOCH " << i << endl;
-        x1 = 0;
-        x2 = 0;
-        run_xor_neural_network();
+        cout << "Enter LEARNING RATE" << endl;
+        validate_number_input(learning_rate);
+        cout << "Enter NUMBER OF EPOCHS" << endl;
+        validate_number_input(epochs);
+        cout << endl;
 
-        x1 = 1;
-        x2 = 0;
-        run_xor_neural_network();
+        for (int i = 0; i < epochs; i++)
+        {
+            x1 = 0;
+            x2 = 0;
+            run_xor_neural_network();
+            if (i % 100 == 0) {
+                cout << "############ EPOCH " << i << " ############ " << endl;
+                cout << endl;
+                show_results();
+            }
 
-        x1 = 0;
-        x2 = 1;
-        run_xor_neural_network();
+            x1 = 1;
+            x2 = 0;
+            run_xor_neural_network();
+            if (i % 100 == 0) {
+                show_results();
+            }
 
-        x1 = 1;
-        x2 = 1;
-        run_xor_neural_network();
-    } 
+            x1 = 0;
+            x2 = 1;
+            run_xor_neural_network();
+            if (i % 100 == 0) {
+                show_results();
+            }
+
+            x1 = 1;
+            x2 = 1;
+            run_xor_neural_network();
+            if (i % 100 == 0) {
+                show_results();
+            }
+        }
+
+        epoch_mse /= 4.0;
+
+        cout << "EPOCH MSE: " << epoch_mse << endl;
+
+        cout << "Enter new set of parameters? [y/n]" << endl;
+        
+        char input = ' ';
+
+        cin >> input;
+
+        switch (input)
+        {
+        case 'y':
+            w1_x1 = 0;
+            w1_x2 = 0;
+            w2_x1 = 0;
+            w2_x2 = 0;
+
+            b1 = 0;
+            b2 = 0;
+
+            v1 = 0;
+            v2 = 0;
+
+            b_out = 0;
+            break;
+        case 'n':
+            is_user_retrying = false;
+            break;
+        default:
+            is_user_retrying = false;
+            break;
+        }
+    }
 }
