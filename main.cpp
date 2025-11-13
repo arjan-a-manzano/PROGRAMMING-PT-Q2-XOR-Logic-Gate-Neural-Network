@@ -112,6 +112,7 @@ b j = b j - (learning rate * hidden eror term)
 #include <vector>
 #include <cmath>
 #include <limits>
+#include <conio.h>
 
 using std::cin; // namespace aliases
 using std::cout;
@@ -180,7 +181,7 @@ double epoch_mse = 0.0;
 
 bool is_user_retrying = true;
 
-double compute_activation(const double& x) {
+double compute_activation(const double& x) { // for passing to 
     return 1 / (1 + exp(-(x)));
 }
 
@@ -196,7 +197,7 @@ double compute_hj_wj_gradient(const double& hidden_error_term, const int& x_j) {
     return hidden_error_term * static_cast<double>(x_j);
 }
 
-void forward_pass_hidden_layer () {
+void forward_pass_hidden_layer() {
     h1 = (w1_x1 * static_cast<double>(x1)) + (w1_x2 * static_cast<double>(x2)) + b1;
     h2 = (w2_x1 * static_cast<double>(x1)) + (w2_x2 * static_cast<double>(x2)) + b2;
 
@@ -300,6 +301,10 @@ void show_results() {
     cout << endl;
     cout << "MSE: " << mse << endl;
     cout << endl;
+
+    epoch_mse /= 4.0;
+    cout << "EPOCH RMSE: " << sqrt(epoch_mse) << endl;
+    epoch_mse = 0.0;
 }
 
 bool wants_to_retry() {
@@ -315,85 +320,88 @@ void validate_number_input(T& variable) {
     }
 }
 
-int main() {
-    while (wants_to_retry()) {
-        cout << "Enter HIDDEN NEURON 1 WEIGHT for Input 1" << endl;
-        validate_number_input(w1_x1);
-        cout << "Enter HIDDEN NEURON 1 WEIGHT for Input 2" << endl;
-        validate_number_input(w1_x2);
-        cout << "Enter HIDDEN NEURON 2 WEIGHT for Input 1" << endl;
-        validate_number_input(w2_x1);
-        cout << "Enter HIDDEN NEURON 2 WEIGHT for Input 2" << endl;
-        validate_number_input(w2_x2);
-        cout << endl;
+template <typename T>
+void ask_number_input(const string& prompt, T& variable) {
+    cout << prompt << endl;
+    validate_number_input(variable);
+}
 
-        cout << "Enter BIAS for NEURON 1" << endl;
-        validate_number_input(b1);
-        cout << "Enter BIAS for NEURON 2" << endl;
-        validate_number_input(b2);
-        cout << endl;
+void ask_all_inputs() {
+    ask_number_input("Enter HIDDEN NEURON 1 WEIGHT for Input 1", w1_x1);
+    ask_number_input("Enter HIDDEN NEURON 1 WEIGHT for Input 2", w1_x2);
+    ask_number_input("Enter HIDDEN NEURON 2 WEIGHT for Input 1", w2_x1);
+    ask_number_input("Enter HIDDEN NEURON 2 WEIGHT for Input 2", w2_x2);
+    cout << endl;
 
-        cout << "Enter OUTPUT NEURON WEIGHT 1" << endl;
-        validate_number_input(v1);
-        cout << "Enter OUTPUT NEURON WEIGHT 2" << endl;
-        validate_number_input(v2);
-        cout << endl;
+    ask_number_input("Enter BIAS for NEURON 1", b1);
+    ask_number_input("Enter BIAS for NEURON 2", b2);
+    cout << endl;
 
-        cout << "Enter BIAS for OUTPUT NEURON" << endl;
-        validate_number_input(b_out);
-        cout << endl;
+    ask_number_input("Enter OUTPUT NEURON WEIGHT 1", v1);
+    ask_number_input("Enter OUTPUT NEURON WEIGHT 2", v2);
+    cout << endl;
 
-        cout << "Enter LEARNING RATE" << endl;
-        validate_number_input(learning_rate);
-        cout << "Enter NUMBER OF EPOCHS" << endl;
-        validate_number_input(epochs);
-        cout << endl;
+    ask_number_input("Enter BIAS for OUTPUT NEURON", b_out);
+    cout << endl;
 
-        for (int i = 0; i < epochs; i++)
-        {
-            x1 = 0;
-            x2 = 0;
-            run_xor_neural_network();
-            if (i % 100 == 0) {
-                cout << "############ EPOCH " << i << " ############ " << endl;
-                cout << endl;
-                show_results();
-            }
+    ask_number_input("Enter LEARNING RATE", learning_rate);
+    ask_number_input("Enter NUMBER OF EPOCHS", epochs);
+    cout << endl;
+}
 
-            x1 = 1;
-            x2 = 0;
-            run_xor_neural_network();
-            if (i % 100 == 0) {
-                show_results();
-            }
+void show_results_at_interval(const int &i, const int &x1_value, const int &x2_value) {
+    x1 = x1_value;
+    x2 = x2_value;
 
-            x1 = 0;
-            x2 = 1;
-            run_xor_neural_network();
-            if (i % 100 == 0) {
-                show_results();
-            }
+    run_xor_neural_network();
 
-            x1 = 1;
-            x2 = 1;
-            run_xor_neural_network();
-            if (i % 100 == 0) {
-                show_results();
-            }
+    if (i % 100 == 0) {
+        if (x1 == 0 && x2 == 0) {
+            cout << "############ EPOCH " << i << " ############ " << endl;
+            cout << endl;
         }
-
-        epoch_mse /= 4.0;
-
-        cout << "EPOCH MSE: " << epoch_mse << endl;
-
-        cout << "Enter new set of parameters? [y/n]" << endl;
         
-        char input = ' ';
+        show_results();
+    }
+}
 
-        cin >> input;
+int round_output_activation(const double &y_pred)
+{
+    if (y_pred <= 0.5) {
+        return 0;
+    }
+    else {
+        return 1;
+    }
+}
 
-        switch (input)
-        {
+void compute_final_xor(const int& x1_value, const int& x2_value) {
+    x1 = x1_value;
+    x2 = x2_value;
+    forward_pass_hidden_layer();
+    forward_pass_output_layer();
+    cout << x1 << " XOR " << x2 << " = " << round_output_activation(y_pred) << " | Activation: " << y_pred << endl;
+}
+
+void display_predicted_xor_table() {
+    cout << endl;
+    cout << "PREDICTED XOR TRUTH TABLE" << endl;
+    cout << endl;
+
+    compute_final_xor(0, 0);
+    compute_final_xor(1, 0);
+    compute_final_xor(0, 1);
+    compute_final_xor(1, 1);
+    cout << endl;
+}
+
+void confirm_retry() {
+    cout << "Enter new set of parameters? [y/n]" << endl;
+
+    char input = ' ';
+    cin >> input;
+
+    switch (input) {
         case 'y':
             w1_x1 = 0;
             w1_x2 = 0;
@@ -414,6 +422,25 @@ int main() {
         default:
             is_user_retrying = false;
             break;
-        }
     }
+}
+
+int main() {
+    while (wants_to_retry()) {
+        ask_all_inputs();
+
+        for (int i = 0; i <= epochs; i++) {
+            show_results_at_interval(i, 0, 0);
+            show_results_at_interval(i, 1, 0);
+            show_results_at_interval(i, 0, 1);
+            show_results_at_interval(i, 1, 1);
+        }
+
+        display_predicted_xor_table();
+
+        confirm_retry();
+    }
+
+    cout << "Press enter to exit" << endl;
+    _getch();
 }
