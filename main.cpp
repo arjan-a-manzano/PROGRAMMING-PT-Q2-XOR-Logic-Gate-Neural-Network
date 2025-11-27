@@ -181,22 +181,23 @@ double epoch_mse = 0.0;
 
 bool is_user_retrying = true;
 
-double compute_activation(const double& x) { // for passing to 
+double compute_activation(const double& x) { // for linking neurons from different layers
     return 1 / (1 + exp(-(x)));
 }
 
-int compute_xor(const int& x1, const int& x2) {
+int compute_xor(const int& x1, const int& x2) { // for computing the MSE and the expected output inside its formula 
     return x1 != x2;
 }
 
-double compute_hj_error_term(const double& output_error_term, const double& v_j, const double& a_j) {
+double compute_hj_error_term(const double& output_error_term, const double& v_j, const double& a_j) { // part of computing gradients for backpropagating hidden layer
     return output_error_term * v_j * (a_j * (1.0 - a_j));
 }
 
-double compute_hj_wj_gradient(const double& hidden_error_term, const int& x_j) {
+double compute_hj_wj_gradient(const double& hidden_error_term, const int& x_j) { // used as part of backpropagating hidden layer
     return hidden_error_term * static_cast<double>(x_j);
 }
 
+// calculate predicted activation (sigmoid) based on binary inputs, weights, and biases
 void forward_pass_hidden_layer() {
     h1 = (w1_x1 * static_cast<double>(x1)) + (w1_x2 * static_cast<double>(x2)) + b1;
     h2 = (w2_x1 * static_cast<double>(x1)) + (w2_x2 * static_cast<double>(x2)) + b2;
@@ -217,6 +218,7 @@ void compute_error() {
     mse = 0.5 * pow(((static_cast<double>(y) - y_pred)), 2);
 }
 
+// determine how much to adjust weights and biases as part of neural learning
 void compute_output_layer_gradient() {
     output_error_term = (y_pred - y) * (y_pred * (1 - y_pred));
     v1_gradient = output_error_term * a1;
@@ -237,6 +239,7 @@ void compute_hidden_layer_gradient() {
     b2_gradient = h2_error_term;
 }
 
+// apply adjustments to the previous two layers
 void backpropagate_output_layer() {
     v1 = v1 - (learning_rate * v1_gradient);
     v2 = v2 - (learning_rate * v2_gradient);
@@ -263,7 +266,7 @@ void run_xor_neural_network() {
     backpropagate_output_layer();
     backpropagate_hidden_layer();
 
-    epoch_mse += mse;
+    epoch_mse += mse; // how wrong are the adjustments for one set of recalculating four binary pairs
 }
 
 void show_results() {
@@ -302,12 +305,12 @@ void show_results() {
     cout << "MSE: " << mse << endl;
     cout << endl;
 
-    epoch_mse /= 4.0;
-    cout << "EPOCH RMSE: " << sqrt(epoch_mse) << endl;
-    epoch_mse = 0.0;
+    epoch_mse /= 4.0; // average all adjustments done to one set of four binary pairs
+    cout << "EPOCH RMSE: " << sqrt(epoch_mse) << endl; // more understandable metric for how wrong the adjustments are for one set
+    epoch_mse = 0.0; // reset for next set
 }
 
-bool wants_to_retry() {
+bool wants_to_retry() { // determine actual bool value inside while loop condition
     return is_user_retrying;
 }
 
@@ -321,12 +324,12 @@ void validate_number_input(T& variable) {
 }
 
 template <typename T>
-void ask_number_input(const string& prompt, T& variable) {
+void ask_number_input(const string& prompt, T& variable) { // more reusable way to prompt user for input
     cout << prompt << endl;
     validate_number_input(variable);
 }
 
-void ask_all_inputs() {
+void ask_all_inputs() { // separated for readability
     ask_number_input("Enter HIDDEN NEURON 1 WEIGHT for Input 1", w1_x1);
     ask_number_input("Enter HIDDEN NEURON 1 WEIGHT for Input 2", w1_x2);
     ask_number_input("Enter HIDDEN NEURON 2 WEIGHT for Input 1", w2_x1);
@@ -349,14 +352,14 @@ void ask_all_inputs() {
     cout << endl;
 }
 
-void show_results_at_interval(const int &i, const int &x1_value, const int &x2_value) {
+void show_results_at_interval(const int &i, const int &x1_value, const int &x2_value) { 
     x1 = x1_value;
     x2 = x2_value;
 
-    run_xor_neural_network();
+    run_xor_neural_network(); // still run all iterations of entire neural network
 
-    if (i % 100 == 0) {
-        if (x1 == 0 && x2 == 0) {
+    if (i % 100 == 0) { // at every 100 iterations to reduce outputs
+        if (x1 == 0 && x2 == 0) { // organize results by showing this header at start of one set of four binary pairs
             cout << "############ EPOCH " << i << " ############ " << endl;
             cout << endl;
         }
@@ -365,7 +368,7 @@ void show_results_at_interval(const int &i, const int &x1_value, const int &x2_v
     }
 }
 
-int round_output_activation(const double &y_pred)
+int round_output_activation(const double &y_pred) // leeway is one half as it makes sense for binary XOR result
 {
     if (y_pred <= 0.5) {
         return 0;
@@ -375,7 +378,7 @@ int round_output_activation(const double &y_pred)
     }
 }
 
-void compute_final_xor(const int& x1_value, const int& x2_value) {
+void compute_final_xor(const int& x1_value, const int& x2_value) { // used in constructing the final XOR truth table
     x1 = x1_value;
     x2 = x2_value;
     forward_pass_hidden_layer();
@@ -383,7 +386,7 @@ void compute_final_xor(const int& x1_value, const int& x2_value) {
     cout << x1 << " XOR " << x2 << " = " << round_output_activation(y_pred) << " | Activation: " << y_pred << endl;
 }
 
-void display_predicted_xor_table() {
+void display_predicted_xor_table() { // final XOR truth table
     cout << endl;
     cout << "PREDICTED XOR TRUTH TABLE" << endl;
     cout << endl;
@@ -395,7 +398,7 @@ void display_predicted_xor_table() {
     cout << endl;
 }
 
-void confirm_retry() {
+void confirm_retry() { // whether to keep program running or not
     cout << "Enter new set of parameters? [y/n]" << endl;
 
     char input = ' ';
